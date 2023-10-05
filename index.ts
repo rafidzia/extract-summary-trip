@@ -14,16 +14,16 @@ import type { NominatimResult, SummarryTripResult } from "./models"
 import { generateStringTimestamp, nominatimUrl } from "./helper"
 import dataUserVSMS from "./DataUserVSMS.json"
 
-let duv: {[key: string]: string} = {}
+let duv: { [key: string]: string } = {}
 
-for(let i = 0; i < dataUserVSMS.length; i++){
-    if(dataUserVSMS[i].Domain && dataUserVSMS[i].Partner){
+for (let i = 0; i < dataUserVSMS.length; i++) {
+    if (dataUserVSMS[i].Domain && dataUserVSMS[i].Partner) {
         duv[dataUserVSMS[i].Domain] = String(dataUserVSMS[i].Partner).replaceAll(",", ".")
     }
 }
 
 const clibar = new SingleBar({
-    format: 'Extracting Progress |{bar}| {percentage}% | {value}/{total} Chunks | ETA: {eta_formatted} | cacheHit: {cacheHit}',
+    format: 'Extracting Progress |{bar}| {percentage}% | {value}/{total} Rows | ETA: {eta_formatted}',
 }, Presets.shades_classic);
 
 const wsPool: { [key: string]: WriteStream } = {};
@@ -47,7 +47,7 @@ const countQuery = `SELECT COUNT(*) FROM summary_trip as st where st.type='M' an
 
 const values = [startDate, stopDate];
 
-if(!existsSync('./res')) {
+if (!existsSync('./res')) {
     console.log("Creating res folder");
     mkdirSync('./res');
 }
@@ -63,11 +63,11 @@ let increment = 0;
     const count = (await client.query(countQuery, values)).rows[0].count;
     console.log(`Total data: ${count}`);
 
-    clibar.start(count, 0, { cacheHit: 'N/A' });
+    clibar.start(count, 0);
 
     const cursor = client.query(new Cursor(query, values)) as Cursor<SummarryTripResult>;
 
-    setInterval(()=>{
+    setInterval(() => {
         clibar.update(increment, {
             cacheHit: cacheHit.toString()
         });
