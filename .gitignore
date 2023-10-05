@@ -1,5 +1,6 @@
 data.db
 **/build
 **/node_modules
-**/res
+**/res*
 .~*
+data.db-journal

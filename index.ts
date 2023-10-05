@@ -4,7 +4,6 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { SingleBar, Presets } from "cli-progress";
-
 import { Database } from "sqlite3"
 import { open } from "sqlite";
 import { Client } from "pg";
@@ -12,6 +11,8 @@ import Cursor from "pg-cursor";
 
 import { createWriteStream, WriteStream } from "fs"
 import { randomUUID } from "crypto";
+import { existsSync, mkdirSync } from "fs";
+
 import type { NominatimResult, NominatimDb, SummarryTripResult } from "./models"
 import { generateStringTimestamp, nominatimUrl } from "./helper"
 
@@ -41,7 +42,12 @@ const countQuery = `SELECT COUNT(*) FROM summary_trip as st where st.type='M' an
 
 const values = [startDate, stopDate];
 
-let isFirst = true;
+if(!existsSync('./res')) {
+    console.log("Creating res folder");
+    mkdirSync('./res');
+}
+
+let isFirst: string[] = []
 let cacheHit = 0;
 let increment = 0;
 
@@ -65,6 +71,7 @@ let increment = 0;
             const data = res[i];
             if (!data) {
                 cond = false;
+                process.exit(0);
                 break;
             }
             /* second run that run async to not waiting for request the nominatim*/
@@ -187,10 +194,10 @@ let increment = 0;
                 };
                 const fileName = data.start_time.toLocaleString('en-US', { month: 'long' }) + "-" + data.start_time.getFullYear().toString();
                 if (!wsPool[fileName]) {
-                    wsPool[fileName] = createWriteStream(`./res/${fileName}.csv`, { flags: 'a' });
+                    wsPool[fileName] = createWriteStream(`./res/${fileName}.csv`);
                 }
-                if (isFirst) {
-                    isFirst = false;
+                if (isFirst.indexOf(fileName) < 0) {
+                    isFirst.push(fileName);
                     const keys = Object.keys(result);
                     wsPool[fileName].write(keys.join(',') + '\n');
                 }
