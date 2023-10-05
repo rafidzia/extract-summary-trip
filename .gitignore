@@ -1,0 +1,5 @@
+data.db
+**/build
+**/node_modules
+**/res
+.~*
