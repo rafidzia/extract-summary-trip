@@ -53,7 +53,6 @@ if (!existsSync('./res')) {
 }
 
 let isFirst: string[] = []
-let cacheHit = 0;
 let increment = 0;
 
 /* limiter semicolon */;
@@ -68,9 +67,7 @@ let increment = 0;
     const cursor = client.query(new Cursor(query, values)) as Cursor<SummarryTripResult>;
 
     setInterval(() => {
-        clibar.update(increment, {
-            cacheHit: cacheHit.toString()
-        });
+        clibar.update(increment);
     }, 1000)
 
     let cond = true;
@@ -111,12 +108,6 @@ let increment = 0;
                     }
                 }
 
-                if (!start?.address || !stop?.address) {
-                    if (!start?.address) console.error("start address is undefined");
-                    if (!stop?.address) console.error("stop address is undefined");
-                    run();
-                    return;
-                }
                 // prioritize city_district because for a city like Jakarta, they only have 
                 // city_district (eg. North Jakarta) and city (eg. Special Capital Region of Jakarta), but not state
                 // so we can use city_district as city and city as state
@@ -166,8 +157,7 @@ let increment = 0;
                 }
                 if (isFirst.indexOf(fileName) < 0) {
                     isFirst.push(fileName);
-                    const keys = Object.keys(result);
-                    wsPool[fileName].write(keys.join(',') + '\n');
+                    wsPool[fileName].write(Object.keys(result).join(',') + '\n');
                 }
                 wsPool[fileName].write(Object.values(result).join(',') + '\n');
                 increment++;
