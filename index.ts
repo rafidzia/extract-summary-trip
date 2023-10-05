@@ -51,6 +51,7 @@ let isFirst: string[] = []
 let cacheHit = 0;
 let increment = 0;
 
+/* limiter semicolon */;
 (async () => {
     await client.connect();
 
@@ -75,7 +76,6 @@ let increment = 0;
                 break;
             }
             /* second run that run async to not waiting for request the nominatim*/
-            /* limiter semicolon */;
             const run = async () => {
                 let start: NominatimResult | undefined;
                 let stop: NominatimResult | undefined;
