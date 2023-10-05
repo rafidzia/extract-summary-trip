@@ -15,7 +15,15 @@ import { existsSync, mkdirSync } from "fs";
 
 import type { NominatimResult, NominatimDb, SummarryTripResult } from "./models"
 import { generateStringTimestamp, nominatimUrl } from "./helper"
+import dataUserVSMS from "./DataUserVSMS.json"
 
+let duv: {[key: string]: string} = {}
+
+for(let i = 0; i < dataUserVSMS.length; i++){
+    if(dataUserVSMS[i].Domain && dataUserVSMS[i].Partner){
+        duv[dataUserVSMS[i].Domain] = String(dataUserVSMS[i].Partner)
+    }
+}
 
 const clibar = new SingleBar({
     format: 'Extracting Progress |{bar}| {percentage}% | {value}/{total} Chunks | ETA: {eta_formatted} | cacheHit: {cacheHit}',
@@ -30,7 +38,7 @@ const stopDate = generateStringTimestamp(new Date(process.env.DATE_STOP + " 23:5
 
 const query =
     `SELECT st.start_time, st.stop_time, st.vehicle_id, st.trip_mileage, st.start_long, st.start_lat, st.stop_long, st.stop_lat, st.type,
-        c.name as company_name, v.imei, v.license_plate, vt.category as vehicle_category, bt.volume_capacity 
+        c.name as company_name, c.domain_name, v.imei, v.license_plate, vt.category as vehicle_category, bt.box_type_id, bt.volume_capacity 
         FROM summary_trip AS st
         LEFT JOIN vehicle AS v on v.vehicle_id = st.vehicle_id
         LEFT JOIN company as c on c.company_id = v.company_id
@@ -179,6 +187,8 @@ let increment = 0;
                 const result = {
                     vehicle_id: data.vehicle_id,
                     company: data.company_name,
+                    domain: data.domain_name,
+                    partner: duv[data.company_name] || "",
                     fleet_type: data.vehicle_category,
                     capacity: data.volume_capacity,
                     imei: data.imei,

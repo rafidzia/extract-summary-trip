@@ -1,7 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { convertCsvToXlsx } from '@aternus/csv-to-xlsx';
-import * as zip from 'jszip'
 
 const csvFolderPath = path.join(__dirname, '../res');
 

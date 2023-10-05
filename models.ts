@@ -9,9 +9,11 @@ export interface SummarryTripResult {
     stop_lat: number,
     type: string,
     company_name: string,
+    domain_name: string,
     imei: string,
     license_plate: string,
     vehicle_category: string,
+    box_type_id?: number,
     volume_capacity?: number,
 }
 
