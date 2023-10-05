@@ -83,52 +83,49 @@ let increment = 0;
             const run = async () => {
                 let start: NominatimResult | undefined;
                 let stop: NominatimResult | undefined;
-
-                if (!start) {
-                    const startUrl = nominatimUrl(data.start_lat, data.start_long);
-                    try {
-                        start = await (await fetch(startUrl)).json();
-                    }
-                    catch (e) {
-                        console.log(e);
-                        run();
-                        return;
-                    }
-                }
-
-                if (!stop) {
-                    const stopUrl = nominatimUrl(data.stop_lat, data.stop_long);
-                    try {
-                        stop = await (await fetch(stopUrl)).json();
-                    }
-                    catch (e) {
-                        console.log(e);
-                        run();
-                        return;
-                    }
+                const startUrl = nominatimUrl(data.start_lat, data.start_long);
+                const stopUrl = nominatimUrl(data.stop_lat, data.stop_long);
+                try {
+                    start = await (await fetch(startUrl)).json();
+                    stop = await (await fetch(stopUrl)).json();
+                } catch (e) {
+                    console.log(e);
+                    run();
+                    return;
                 }
 
                 // prioritize city_district because for a city like Jakarta, they only have 
                 // city_district (eg. North Jakarta) and city (eg. Special Capital Region of Jakarta), but not state
                 // so we can use city_district as city and city as state
-                const fromCity = start?.address.city_district ||
-                    start?.address.city ||
-                    start?.address.town ||
-                    start?.address.county ||
-                    start?.address.village ||
-                    start?.address.industrial ||
-                    start?.address.road ||
-                    "";
-                const fromState = start?.address.state || start?.address.city;
-                const toCity = stop?.address.city_district ||
-                    stop?.address.city ||
-                    stop?.address.town ||
-                    stop?.address.county ||
-                    stop?.address.village ||
-                    stop?.address.industrial ||
-                    stop?.address.road ||
-                    "";
-                const toState = stop?.address.state || stop?.address.city;
+
+                let fromCity = "";
+                let fromState = "";
+                let toCity = "";
+                let toState = "";
+
+                if (start?.address) {
+                    fromCity = start?.address.city_district ||
+                        start?.address.city ||
+                        start?.address.town ||
+                        start?.address.county ||
+                        start?.address.village ||
+                        start?.address.industrial ||
+                        start?.address.road ||
+                        "";
+                    fromState = start?.address.state || start?.address.city || ""
+                }
+
+                if (stop?.address) {
+                    toCity = stop?.address.city_district ||
+                        stop?.address.city ||
+                        stop?.address.town ||
+                        stop?.address.county ||
+                        stop?.address.village ||
+                        stop?.address.industrial ||
+                        stop?.address.road ||
+                        "";
+                    toState = stop?.address.state || stop?.address.city || ""
+                }
 
                 const distance = data.trip_mileage / 1000;
 
