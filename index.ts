@@ -4,16 +4,13 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { SingleBar, Presets } from "cli-progress";
-import { Database } from "sqlite3"
-import { open } from "sqlite";
 import { Client } from "pg";
 import Cursor from "pg-cursor";
 
 import { createWriteStream, WriteStream } from "fs"
-import { randomUUID } from "crypto";
 import { existsSync, mkdirSync } from "fs";
 
-import type { NominatimResult, NominatimDb, SummarryTripResult } from "./models"
+import type { NominatimResult, SummarryTripResult } from "./models"
 import { generateStringTimestamp, nominatimUrl } from "./helper"
 import dataUserVSMS from "./DataUserVSMS.json"
 
@@ -21,7 +18,7 @@ let duv: {[key: string]: string} = {}
 
 for(let i = 0; i < dataUserVSMS.length; i++){
     if(dataUserVSMS[i].Domain && dataUserVSMS[i].Partner){
-        duv[dataUserVSMS[i].Domain] = String(dataUserVSMS[i].Partner)
+        duv[dataUserVSMS[i].Domain] = String(dataUserVSMS[i].Partner).replaceAll(",", ".")
     }
 }
 
@@ -63,15 +60,18 @@ let increment = 0;
 (async () => {
     await client.connect();
 
-    // const db = await open({ filename: 'data.db', driver: Database });
-    // db.exec("CREATE TABLE IF NOT EXISTS nominatim_result (id TEXT PRIMARY KEY, city TEXT, state TEXT, bound_lat_1 INTEGER, bound_lat_2 INTEGER, bound_long_1 INTEGER, bound_long_2 INTEGER)");
-
     const count = (await client.query(countQuery, values)).rows[0].count;
     console.log(`Total data: ${count}`);
 
     clibar.start(count, 0, { cacheHit: 'N/A' });
 
     const cursor = client.query(new Cursor(query, values)) as Cursor<SummarryTripResult>;
+
+    setInterval(()=>{
+        clibar.update(increment, {
+            cacheHit: cacheHit.toString()
+        });
+    }, 1000)
 
     let cond = true;
     while (cond) {
@@ -87,24 +87,6 @@ let increment = 0;
                 let start: NominatimResult | undefined;
                 let stop: NominatimResult | undefined;
 
-                // let startCached = false;
-                // let stopCached = false;
-
-                // if (process.env.CACHING?.toLowerCase() == 'true') {
-                //     let tmpNominatim = await db.get(`SELECT city, state FROM nominatim_result WHERE ${Number(data.start_lat)} between bound_lat_1 and bound_lat_2 and ${Number(data.start_long)} between bound_long_1 and bound_long_2`) as NominatimDb;
-                //     if (tmpNominatim) {
-                //         cacheHit++;
-                //         startCached = true;
-                //         start = {
-                //             address: {
-                //                 city: tmpNominatim.city,
-                //                 state: tmpNominatim.state,
-                //             },
-                //             boundingbox: []
-                //         };
-                //     }
-                // }
-
                 if (!start) {
                     const startUrl = nominatimUrl(data.start_lat, data.start_long);
                     try {
@@ -116,21 +98,6 @@ let increment = 0;
                         return;
                     }
                 }
-
-                // if (process.env.CACHING?.toLowerCase() == 'true') {
-                //     let tmpNominatim = await db.get(`SELECT city, state FROM nominatim_result WHERE ${Number(data.stop_lat)} between bound_lat_1 and bound_lat_2 and ${Number(data.stop_long)} between bound_long_1 and bound_long_2`) as NominatimDb;
-                //     if (tmpNominatim) {
-                //         cacheHit++;
-                //         stopCached = true;
-                //         stop = {
-                //             address: {
-                //                 city: tmpNominatim.city,
-                //                 state: tmpNominatim.state,
-                //             },
-                //             boundingbox: []
-                //         };
-                //     }
-                // }
 
                 if (!stop) {
                     const stopUrl = nominatimUrl(data.stop_lat, data.stop_long);
@@ -172,15 +139,6 @@ let increment = 0;
                     "";
                 const toState = stop?.address.state || stop?.address.city;
 
-                // if (process.env.CACHING?.toLowerCase() == 'true') {
-                //     if (!startCached) {
-                //         await db.exec(`INSERT INTO nominatim_result (id, city, state, bound_lat_1, bound_lat_2, bound_long_1, bound_long_2) VALUES ('${randomUUID()}', '${fromCity}', '${fromState}', '${Number(start?.boundingbox[0])}', '${Number(start?.boundingbox[1])}', '${Number(start?.boundingbox[2])}', '${Number(start?.boundingbox[3])}')`);
-                //     }
-                //     if (!stopCached) {
-                //         await db.exec(`INSERT INTO nominatim_result (id, city, state, bound_lat_1, bound_lat_2, bound_long_1, bound_long_2) VALUES ('${randomUUID()}', '${toCity}', '${toState}', '${Number(stop?.boundingbox[0])}', '${Number(stop?.boundingbox[1])}', '${Number(stop?.boundingbox[2])}', '${Number(stop?.boundingbox[3])}')`);
-                //     }
-                // }
-
                 const distance = data.trip_mileage / 1000;
 
                 const result = {
@@ -209,12 +167,10 @@ let increment = 0;
                 if (isFirst.indexOf(fileName) < 0) {
                     isFirst.push(fileName);
                     const keys = Object.keys(result);
-                    wsPool[fileName].write(keys.join(';') + '\n');
+                    wsPool[fileName].write(keys.join(',') + '\n');
                 }
-                wsPool[fileName].write(Object.values(result).join(';') + '\n');
-                clibar.update(++increment, {
-                    cacheHit: cacheHit.toString()
-                });
+                wsPool[fileName].write(Object.values(result).join(',') + '\n');
+                increment++;
             };
             run();
         }

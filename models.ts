@@ -31,12 +31,12 @@ export interface NominatimResult {
     boundingbox: string[]
 }
 
-export interface NominatimDb {
-    // id: string,
-    city: string,
-    state: string,
-    // bound_lat_1: number,
-    // bound_lat_2: number,
-    // bound_long_1: number,
-    // bound_long_2: number,
-}
+// export interface NominatimDb {
+//     // id: string,
+//     city: string,
+//     state: string,
+//     // bound_lat_1: number,
+//     // bound_lat_2: number,
+//     // bound_long_1: number,
+//     // bound_long_2: number,
+// }
