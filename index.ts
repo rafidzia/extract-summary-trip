@@ -189,7 +189,7 @@ let increment = 0;
                     domain: data.domain_name,
                     partner: duv[data.company_name] || "",
                     fleet_type: data.vehicle_category,
-                    capacity: data.volume_capacity,
+                    capacity: data.volume_capacity || "",
                     imei: data.imei,
                     license_plate: data.license_plate,
                     date_start: generateStringTimestamp(data.start_time, false),
@@ -208,9 +208,9 @@ let increment = 0;
                 if (isFirst.indexOf(fileName) < 0) {
                     isFirst.push(fileName);
                     const keys = Object.keys(result);
-                    wsPool[fileName].write(keys.join(',') + '\n');
+                    wsPool[fileName].write(keys.join(';') + '\n');
                 }
-                wsPool[fileName].write(Object.values(result).join(',') + '\n');
+                wsPool[fileName].write(Object.values(result).join(';') + '\n');
                 clibar.update(++increment, {
                     cacheHit: cacheHit.toString()
                 });
