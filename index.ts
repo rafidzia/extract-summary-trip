@@ -10,7 +10,7 @@ import Cursor from "pg-cursor";
 import { createWriteStream, readFileSync, writeFileSync, WriteStream, existsSync, mkdirSync } from "fs"
 
 import type { NominatimResult, SummarryTripResult } from "./models"
-import { generateStringTimestamp, nominatimUrl } from "./helper"
+import { generateStringTimestamp, getLastRow, nominatimUrl } from "./helper"
 import dataUserVSMS from "./DataUserVSMS.json"
 import { randomUUID } from "crypto";
 
@@ -56,16 +56,12 @@ const wsPool: { [key: string]: WriteStream } = {};
 
 let wsOpt: { flags?: string } = {}
 
-let isFirst: string[] = []
 let increment = 0;
 
 /* limiter semicolon */;
 (async () => {
 
-    if (existsSync('./tmp0')) {
-        wsOpt.flags = 'a'
-        increment = Number(readFileSync('./tmp0').toString())
-    }
+    increment = await getLastRow() as any as number;
 
     await client.connect();
 
@@ -109,7 +105,7 @@ let increment = 0;
                     start = await (await fetch(startUrl)).json();
                     stop = await (await fetch(stopUrl)).json();
                 } catch (e) {
-                    console.log(e);
+                    // console.log(e);
                     run();
                     stopCursor = true;
                     return;
@@ -192,7 +188,6 @@ let increment = 0;
                     } else {
                         wsPool[fileName].write(Object.values(result).join(',') + '\n');
                         increment++;
-                        writeFileSync('./tmp0', String(increment))
                         ids.shift()
                     }
                 }
