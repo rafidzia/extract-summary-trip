@@ -12,6 +12,7 @@ import { createWriteStream, readFileSync, writeFileSync, WriteStream, existsSync
 import type { NominatimResult, SummarryTripResult } from "./models"
 import { generateStringTimestamp, nominatimUrl } from "./helper"
 import dataUserVSMS from "./DataUserVSMS.json"
+import { randomUUID } from "crypto";
 
 let duv: { [key: string]: string } = {}
 
@@ -79,11 +80,14 @@ let increment = 0;
         clibar.update(increment);
     }, 1000)
 
+    let ids: string[] = []
 
     while (true) {
         const res = await cursor.read(process.env.BATCH_SIZE ? Number(process.env.BATCH_SIZE) : 1);
 
         for (let i = 0; i < res.length; i++) {
+            const id = randomUUID()
+            ids.push(id)
             const data = res[i];
             if (!data) continue;
             /* second run that run async to not waiting for request the nominatim*/
@@ -167,9 +171,21 @@ let increment = 0;
                         writeFileSync('./tmp1', fileWritted.concat(fileName).join(","))
                     }
                 }
-                wsPool[fileName].write(Object.values(result).join(',') + '\n');
-                increment++;
-                writeFileSync('./tmp0', String(increment))
+
+                const writeQueue = () => {
+                    if (ids[0] !== id) {
+                        setTimeout(() => {
+                            writeQueue()
+                        }, 1)
+                    } else {
+                        wsPool[fileName].write(Object.values(result).join(',') + '\n');
+                        increment++;
+                        writeFileSync('./tmp0', String(increment))
+                        ids.shift()
+                    }
+                }
+
+                writeQueue()
             };
             run();
         }
