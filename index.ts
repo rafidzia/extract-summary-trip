@@ -82,7 +82,16 @@ let increment = 0;
 
     let ids: string[] = []
 
-    while (true) {
+    let stopCursor = false;
+
+
+    const r = async () => {
+        if(stopCursor){
+            setTimeout(() => {
+                r()
+            }, 1)
+            return
+        }
         const res = await cursor.read(process.env.BATCH_SIZE ? Number(process.env.BATCH_SIZE) : 1);
 
         for (let i = 0; i < res.length; i++) {
@@ -102,8 +111,11 @@ let increment = 0;
                 } catch (e) {
                     console.log(e);
                     run();
+                    stopCursor = true;
                     return;
                 }
+
+                stopCursor = false;
 
                 // prioritize city_district because for a city like Jakarta, they only have 
                 // city_district (eg. North Jakarta) and city (eg. Special Capital Region of Jakarta), but not state
@@ -189,5 +201,7 @@ let increment = 0;
             };
             run();
         }
+        r()
     }
+    r()
 })();
