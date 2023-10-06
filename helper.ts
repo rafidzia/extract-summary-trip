@@ -12,3 +12,11 @@ export const generateStringTimestamp = (date: Date, withTimeZone = true) => {
 
 export const nominatimUrl = (lat: number, long: number) =>
     `https://geolocation.mceasy.com/reverse?format=json&lat=${lat.toString()}&lon=${long.toString()}`;
+
+export const CloneArray = (obj: object[]) => {
+    let out: object[] = new Array(obj.length).fill({});
+    for (let i = 0; i < obj.length; i++) {
+        Object.assign(out[i], obj[i]);
+    }
+    return out;
+}

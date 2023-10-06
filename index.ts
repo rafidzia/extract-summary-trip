@@ -7,8 +7,7 @@ import { SingleBar, Presets } from "cli-progress";
 import { Client } from "pg";
 import Cursor from "pg-cursor";
 
-import { createWriteStream, WriteStream } from "fs"
-import { existsSync, mkdirSync } from "fs";
+import { createWriteStream, readFileSync, writeFileSync, WriteStream, existsSync, mkdirSync } from "fs"
 
 import type { NominatimResult, SummarryTripResult } from "./models"
 import { generateStringTimestamp, nominatimUrl } from "./helper"
@@ -26,7 +25,6 @@ const clibar = new SingleBar({
     format: 'Extracting Progress |{bar}| {percentage}% | {value}/{total} Rows | ETA: {eta_formatted}',
 }, Presets.shades_classic);
 
-const wsPool: { [key: string]: WriteStream } = {};
 const client = new Client({
     connectionString: `postgresql://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_INIT}?options=-c%20search_path%3D${process.env.DB_SCHEMA}`
 });
@@ -41,7 +39,8 @@ const query =
         LEFT JOIN company as c on c.company_id = v.company_id
         LEFT JOIN vehicle_type as vt on vt.vehicle_type_id = v.vehicle_type_id
         LEFT JOIN box_type as bt on bt.box_type_id = v.box_type_id
-        where st.type='M' and st.start_time > $1 and st.stop_time < $2`;
+        where st.type='M' and st.start_time > $1 and st.stop_time < $2
+        OFFSET $3`;
 
 const countQuery = `SELECT COUNT(*) FROM summary_trip as st where st.type='M' and st.start_time > $1 and st.stop_time < $2`;
 
@@ -52,33 +51,41 @@ if (!existsSync('./res')) {
     mkdirSync('./res');
 }
 
+const wsPool: { [key: string]: WriteStream } = {};
+
+let wsOpt: { flags?: string } = {}
+
 let isFirst: string[] = []
 let increment = 0;
 
 /* limiter semicolon */;
 (async () => {
+
+    if (existsSync('./tmp0')) {
+        wsOpt.flags = 'a'
+        increment = Number(readFileSync('./tmp0').toString())
+    }
+
     await client.connect();
 
     const count = (await client.query(countQuery, values)).rows[0].count;
     console.log(`Total data: ${count}`);
 
-    clibar.start(count, 0);
+    const cursor = client.query(new Cursor(query, [...values, String(increment)])) as Cursor<SummarryTripResult>;
 
-    const cursor = client.query(new Cursor(query, values)) as Cursor<SummarryTripResult>;
+    clibar.start(count, increment);
 
     setInterval(() => {
         clibar.update(increment);
     }, 1000)
 
-    let cond = true;
-    while (cond) {
+
+    while (true) {
         const res = await cursor.read(process.env.BATCH_SIZE ? Number(process.env.BATCH_SIZE) : 1);
+
         for (let i = 0; i < res.length; i++) {
             const data = res[i];
-            if (!data) {
-                cond = false;
-                break;
-            }
+            if (!data) continue;
             /* second run that run async to not waiting for request the nominatim*/
             const run = async () => {
                 let start: NominatimResult | undefined;
@@ -150,21 +157,21 @@ let increment = 0;
                 };
                 const fileName = data.start_time.toLocaleString('en-US', { month: 'long' }) + "-" + data.start_time.getFullYear().toString();
                 if (!wsPool[fileName]) {
-                    wsPool[fileName] = createWriteStream(`./res/${fileName}.csv`);
-                }
-                if (isFirst.indexOf(fileName) < 0) {
-                    isFirst.push(fileName);
-                    wsPool[fileName].write(Object.keys(result).join(',') + '\n');
+                    wsPool[fileName] = createWriteStream(`./res/${fileName}.csv`, wsOpt);
+                    let fileWritted: string[] = [];
+                    if (existsSync('./tmp1')) {
+                        fileWritted = readFileSync("./tmp1").toString().split(",");
+                    }
+                    if (fileWritted.indexOf(fileName) === -1) {
+                        wsPool[fileName].write(Object.keys(result).join(',') + '\n');
+                        writeFileSync('./tmp1', fileWritted.concat(fileName).join(","))
+                    }
                 }
                 wsPool[fileName].write(Object.values(result).join(',') + '\n');
                 increment++;
+                writeFileSync('./tmp0', String(increment))
             };
             run();
         }
     }
-    clibar.stop();
-    for (const key in wsPool) {
-        wsPool[key].close();
-    }
-    await client.end();
 })();
