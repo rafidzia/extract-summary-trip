@@ -54,8 +54,6 @@ if (!existsSync('./res')) {
 
 const wsPool: { [key: string]: WriteStream } = {};
 
-let wsOpt: { flags?: string } = {}
-
 let increment = 0;
 
 /* limiter semicolon */;
@@ -82,7 +80,7 @@ let increment = 0;
 
 
     const r = async () => {
-        if(stopCursor){
+        if (stopCursor) {
             setTimeout(() => {
                 r()
             }, 1)
@@ -169,14 +167,14 @@ let increment = 0;
                 };
                 const fileName = data.start_time.toLocaleString('en-US', { month: 'long' }) + "-" + data.start_time.getFullYear().toString();
                 if (!wsPool[fileName]) {
-                    wsPool[fileName] = createWriteStream(`./res/${fileName}.csv`, wsOpt);
+                    wsPool[fileName] = createWriteStream(`./res/${fileName}.csv`, { flags: 'a' });
                     let fileWritted: string[] = [];
-                    if (existsSync('./tmp1')) {
-                        fileWritted = readFileSync("./tmp1").toString().split(",");
+                    if (existsSync('./tmp')) {
+                        fileWritted = readFileSync("./tmp").toString().split(",");
                     }
                     if (fileWritted.indexOf(fileName) === -1) {
                         wsPool[fileName].write(Object.keys(result).join(',') + '\n');
-                        writeFileSync('./tmp1', fileWritted.concat(fileName).join(","))
+                        writeFileSync('./tmp', fileWritted.concat(fileName).join(","))
                     }
                 }
 
